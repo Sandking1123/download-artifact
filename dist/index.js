@@ -7368,6 +7368,9 @@ function downloadArtifact(artifactId, repositoryOwner, repositoryName, token, op
         const scrubbedURL = new URL(location);
         scrubbedURL.search = '';
         core.debug(`Redirecting to blob download url: ${scrubbedURL.toString()}`);
+        // const client = new httpClient.HttpClient(getUserAgentString(), [], {})
+        // const response = await client.get(location)
+        // response.message.pipe(unzipper.Extract({ path: options?.path }))
         return { success: true };
     });
 }
@@ -100804,7 +100807,7 @@ module.exports = JSON.parse('[[[0,44],"disallowed_STD3_valid"],[[45,46],"valid"]
 /***/ ((module) => {
 
 "use strict";
-module.exports = JSON.parse('{"name":"@actions/artifact","version":"2.0.0","preview":true,"description":"Actions artifact lib","keywords":["github","actions","artifact"],"homepage":"https://github.com/actions/toolkit/tree/main/packages/artifact","license":"MIT","main":"lib/artifact.js","types":"lib/artifact.d.ts","directories":{"lib":"lib","test":"__tests__"},"files":["lib","!.DS_Store"],"publishConfig":{"access":"public"},"repository":{"type":"git","url":"git+https://github.com/actions/toolkit.git","directory":"packages/artifact"},"scripts":{"audit-moderate":"npm install && npm audit --json --audit-level=moderate > audit.json","test":"echo \\"Error: run tests from root\\" && exit 1","bootstrap":"cd ../../ && npm run bootstrap","tsc-run":"tsc","tsc":"npm run bootstrap && npm run tsc-run"},"bugs":{"url":"https://github.com/actions/toolkit/issues"},"dependencies":{"@actions/core":"^1.10.0","@actions/github":"^5.1.1","@actions/http-client":"^2.1.0","@azure/storage-blob":"^12.15.0","@octokit/core":"^3.5.1","@octokit/plugin-request-log":"^1.0.4","@octokit/plugin-retry":"^3.0.9","@protobuf-ts/plugin":"^2.2.3-alpha.1","archiver":"^5.3.1","crypto":"^1.0.1","jwt-decode":"^3.1.2","twirp-ts":"^2.5.0"},"devDependencies":{"@types/archiver":"^5.3.2","typescript":"^4.3.0"}}');
+module.exports = JSON.parse('{"name":"@actions/artifact","version":"2.0.0","preview":true,"description":"Actions artifact lib","keywords":["github","actions","artifact"],"homepage":"https://github.com/actions/toolkit/tree/main/packages/artifact","license":"MIT","main":"lib/artifact.js","types":"lib/artifact.d.ts","directories":{"lib":"lib","test":"__tests__"},"files":["lib","!.DS_Store"],"publishConfig":{"access":"public"},"repository":{"type":"git","url":"git+https://github.com/actions/toolkit.git","directory":"packages/artifact"},"scripts":{"audit-moderate":"npm install && npm audit --json --audit-level=moderate > audit.json","test":"echo \\"Error: run tests from root\\" && exit 1","bootstrap":"cd ../../ && npm run bootstrap","tsc-run":"tsc","tsc":"npm run bootstrap && npm run tsc-run"},"bugs":{"url":"https://github.com/actions/toolkit/issues"},"dependencies":{"@actions/core":"^1.10.0","@actions/github":"^5.1.1","@actions/http-client":"^2.1.0","@azure/storage-blob":"^12.15.0","@octokit/core":"^3.5.1","@octokit/plugin-request-log":"^1.0.4","@octokit/plugin-retry":"^3.0.9","@protobuf-ts/plugin":"^2.2.3-alpha.1","archiver":"^5.3.1","crypto":"^1.0.1","jwt-decode":"^3.1.2","twirp-ts":"^2.5.0","unzipper":"^0.10.14"},"devDependencies":{"@types/archiver":"^5.3.2","typescript":"^4.3.0"}}');
 
 /***/ })
 
