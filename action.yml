@@ -1,12 +1,16 @@
 name: 'Download a Build Artifact'
 description: 'Download a build artifact that was previously uploaded in the workflow by the upload-artifact action'
 author: 'GitHub'
-inputs: 
+inputs:
   name:
     description: 'Artifact name'
     required: false
   path:
     description: 'Destination path'
+    required: false
+  github-token:
+    description: The GitHub token used to download the artifact
+    default: ${{ github.token }}
     required: false
 outputs:
   download-path:
