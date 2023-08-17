@@ -6,7 +6,7 @@ import * as github from '@actions/github'
 import {Inputs, Outputs} from './constants'
 
 async function run(): Promise<void> {
-  // const name = core.getInput(Inputs.Name, {required: false})
+  const name = core.getInput(Inputs.Name, {required: false})
   const path = core.getInput(Inputs.Path, {required: false})
   const token = core.getInput(Inputs.GitHubToken, {required: false})
 
@@ -23,22 +23,32 @@ async function run(): Promise<void> {
 
   const {repo, runId} = github.context
 
-  const artifacts = await artifactClient.listArtifacts(
+  // TODO: use get artifact for a single lookup
+  const { artifacts } = await artifactClient.listArtifacts(
     runId,
     repo.owner,
     repo.repo,
     token
   )
 
+  const singleArtifact = artifacts.find(a => a.artifactName === name)
+
+  if (!singleArtifact) {
+    throw new Error(`Artifact ${name} not found`)
+  }
+
   console.log(artifacts)
 
-  // artifactClient.downloadArtifact(
-  //   null, // artifact id
-  //   null, // repository owner
-  //   null, // repository name
-  //   null, // token
-  //   null // options
-  // )
+  const out = await artifactClient.downloadArtifact(
+    singleArtifact.artifactId,
+    repo.owner,
+    repo.repo,
+    token,
+    {path: resolvedPath}
+  )
+
+  console.log(out)
+
   // if (!name) {
   //   // download all artifacts
   //   core.info('No artifact name specified, downloading all artifacts')
