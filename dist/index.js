@@ -7348,7 +7348,8 @@ const core = __importStar(__nccwpck_require__(6526));
 function downloadArtifact(artifactId, repositoryOwner, repositoryName, token, options) {
     return __awaiter(this, void 0, void 0, function* () {
         const api = github.getOctokit(token);
-        const { headers } = yield api.rest.actions.downloadArtifact({
+        core.info(`Downloading artifact ${artifactId} from ${repositoryOwner}/${repositoryName}`);
+        const { headers, status } = yield api.rest.actions.downloadArtifact({
             owner: repositoryOwner,
             repo: repositoryName,
             artifact_id: artifactId,
@@ -7357,9 +7358,16 @@ function downloadArtifact(artifactId, repositoryOwner, repositoryName, token, op
                 redirect: 'manual',
             },
         });
-        core.debug(JSON.stringify(headers));
+        if (status !== 302) {
+            throw new Error(`Unable to download artifact. Unexpected status: ${status}`);
+        }
         const { location } = headers;
-        console.log("redirect to:" + location);
+        if (!location) {
+            throw new Error(`Unable to redirect to artifact download url`);
+        }
+        const scrubbedURL = new URL(location);
+        scrubbedURL.search = '';
+        core.debug(`Redirecting to blob download url: ${scrubbedURL.toString()}`);
         return { success: true };
     });
 }
