@@ -100488,7 +100488,7 @@ function run() {
     return __awaiter(this, void 0, void 0, function* () {
         const inputs = {
             name: core.getInput(constants_1.Inputs.Name, { required: false }),
-            path: core.getInput(constants_1.Inputs.Path, { required: true }),
+            path: core.getInput(constants_1.Inputs.Path, { required: false }),
             token: core.getInput(constants_1.Inputs.GitHubToken, { required: true }),
             repository: core.getInput(constants_1.Inputs.Repository, { required: true }),
             runID: parseInt(core.getInput(constants_1.Inputs.RunID, { required: true })) // TODO: parse int or use as string?

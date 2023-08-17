@@ -11,7 +11,7 @@ const PARALLEL_DOWNLOADS = 5
 async function run(): Promise<void> {
   const inputs = {
     name: core.getInput(Inputs.Name, {required: false}),
-    path: core.getInput(Inputs.Path, {required: true}),
+    path: core.getInput(Inputs.Path, {required: false}),
     token: core.getInput(Inputs.GitHubToken, {required: true}),
     repository: core.getInput(Inputs.Repository, {required: true}),
     runID: parseInt(core.getInput(Inputs.RunID, {required: true})) // TODO: parse int or use as string?
