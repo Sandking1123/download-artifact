@@ -27,11 +27,12 @@ async function run(): Promise<void> {
   const [owner, repo] = inputs.repository.split('/')
   if (!owner || !repo) {
     throw new Error(
-      `Invalid repository: ${inputs.repository}. Must be in format owner/repo`
+      `Invalid repository: '${inputs.repository}'. Must be in format owner/repo`
     )
   }
 
   const artifactClient = artifact.create()
+  let artifacts: artifact.Artifact[] = []
 
   if (inputs.name) {
     const {artifact: targetArtifact} = await artifactClient.getArtifact(
@@ -47,54 +48,40 @@ async function run(): Promise<void> {
     }
 
     core.debug(
-      `Found artifact for ${inputs.name} (ID: ${targetArtifact.id}, Size: ${targetArtifact.size})`
+      `Found named artifact '${inputs.name}' (ID: ${targetArtifact.id}, Size: ${targetArtifact.size})`
     )
 
-    const out = await artifactClient.downloadArtifact(
-      targetArtifact.id,
-      owner,
-      repo,
-      inputs.token,
-      {path: resolvedPath}
-    )
-
-    if (!out.success) {
-      throw new Error(`Failed to download artifact '${inputs.name}'`)
-    }
-
-    core.info(
-      `Artifact ${targetArtifact.name} was downloaded to ${resolvedPath}`
-    )
+    artifacts = [targetArtifact]
   } else {
-    const {artifacts} = await artifactClient.listArtifacts(
+    const listArtifactResponse = await artifactClient.listArtifacts(
       inputs.runID,
       owner,
       repo,
       inputs.token
     )
 
-    if (artifacts.length === 0) {
+    if (listArtifactResponse.artifacts.length === 0) {
       throw new Error(
-        `No artifacts found for run ${inputs.runID} in ${inputs.repository}`
+        `No artifacts found for run '${inputs.runID}' in '${inputs.repository}'`
       )
     }
 
-    core.debug(`Found ${artifacts.length} artifacts`)
-
-    const downloadPromises = artifacts.map(artifact =>
-      artifactClient.downloadArtifact(artifact.id, owner, repo, inputs.token, {
-        path: resolvedPath
-      })
-    )
-
-    const chunkedPromises = chunk(downloadPromises, PARALLEL_DOWNLOADS)
-    for (const chunk of chunkedPromises) {
-      await Promise.all(chunk)
-    }
-
-    core.info(`There were ${artifacts.length} artifacts downloaded`)
+    core.debug(`Found ${listArtifactResponse.artifacts.length} artifacts`)
+    artifacts = listArtifactResponse.artifacts
   }
 
+  const downloadPromises = artifacts.map(artifact =>
+    artifactClient.downloadArtifact(artifact.id, owner, repo, inputs.token, {
+      path: resolvedPath
+    })
+  )
+
+  const chunkedPromises = chunk(downloadPromises, PARALLEL_DOWNLOADS)
+  for (const chunk of chunkedPromises) {
+    await Promise.all(chunk)
+  }
+
+  core.info(`Total of ${artifacts.length} artifact(s) downloaded`)
   core.setOutput(Outputs.DownloadPath, resolvedPath)
   core.info('Download artifact has finished successfully')
 }
