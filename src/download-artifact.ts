@@ -1,88 +1,102 @@
 import * as os from 'os'
-import {resolve} from 'path'
+import * as path from 'path'
 import * as core from '@actions/core'
 import * as artifact from '@actions/artifact'
-import * as github from '@actions/github'
 import {Inputs, Outputs} from './constants'
+import {chunk} from './utils'
+
+// todo: make this configurable?
+const PARALLEL_DOWNLOADS = 5
 
 async function run(): Promise<void> {
-  const name = core.getInput(Inputs.Name, {required: false})
-  const path = core.getInput(Inputs.Path, {required: false})
-  const token = core.getInput(Inputs.GitHubToken, {required: false})
-
-  let resolvedPath
-  // resolve tilde expansions, path.replace only replaces the first occurrence of a pattern
-  if (path.startsWith(`~`)) {
-    resolvedPath = resolve(path.replace('~', os.homedir()))
-  } else {
-    resolvedPath = resolve(path)
+  const inputs = {
+    name: core.getInput(Inputs.Name, {required: false}),
+    path: core.getInput(Inputs.Path, {required: true}),
+    token: core.getInput(Inputs.GitHubToken, {required: true}),
+    repository: core.getInput(Inputs.Repository, {required: true}),
+    runID: parseInt(core.getInput(Inputs.RunID, {required: true})) // TODO: parse int or use as string?
   }
+
+  if (inputs.path.startsWith(`~`)) {
+    inputs.path = inputs.path.replace('~', os.homedir())
+  }
+
+  const resolvedPath = path.resolve(inputs.path)
   core.debug(`Resolved path is ${resolvedPath}`)
+
+  const [owner, repo] = inputs.repository.split('/')
+  if (!owner || !repo) {
+    throw new Error(
+      `Invalid repository: ${inputs.repository}. Must be in format owner/repo`
+    )
+  }
 
   const artifactClient = artifact.create()
 
-  const {repo, runId} = github.context
+  if (inputs.name) {
+    const {artifact: targetArtifact} = await artifactClient.getArtifact(
+      inputs.name,
+      inputs.runID,
+      owner,
+      repo,
+      inputs.token
+    )
 
-  // TODO: use get artifact for a single lookup
-  const { artifacts } = await artifactClient.listArtifacts(
-    runId,
-    repo.owner,
-    repo.repo,
-    token
-  )
+    if (!targetArtifact) {
+      throw new Error(`Artifact '${inputs.name}' not found`)
+    }
 
-  const singleArtifact = artifacts.find(a => a.artifactName === name)
+    core.debug(
+      `Found artifact for ${inputs.name} (ID: ${targetArtifact.id}, Size: ${targetArtifact.size})`
+    )
 
-  if (!singleArtifact) {
-    throw new Error(`Artifact ${name} not found`)
+    const out = await artifactClient.downloadArtifact(
+      targetArtifact.id,
+      owner,
+      repo,
+      inputs.token,
+      {path: resolvedPath}
+    )
+
+    if (!out.success) {
+      throw new Error(`Failed to download artifact '${inputs.name}'`)
+    }
+
+    core.info(
+      `Artifact ${targetArtifact.name} was downloaded to ${resolvedPath}`
+    )
+  } else {
+    const {artifacts} = await artifactClient.listArtifacts(
+      inputs.runID,
+      owner,
+      repo,
+      inputs.token
+    )
+
+    if (artifacts.length === 0) {
+      throw new Error(
+        `No artifacts found for run ${inputs.runID} in ${inputs.repository}`
+      )
+    }
+
+    core.debug(`Found ${artifacts.length} artifacts`)
+
+    const downloadPromises = artifacts.map(artifact =>
+      artifactClient.downloadArtifact(artifact.id, owner, repo, inputs.token, {
+        path: resolvedPath
+      })
+    )
+
+    const chunkedPromises = chunk(downloadPromises, PARALLEL_DOWNLOADS)
+    for (const chunk of chunkedPromises) {
+      await Promise.all(chunk)
+    }
+
+    core.info(`There were ${artifacts.length} artifacts downloaded`)
   }
 
-  console.log(artifacts)
-
-  const out = await artifactClient.downloadArtifact(
-    singleArtifact.artifactId,
-    repo.owner,
-    repo.repo,
-    token,
-    {path: resolvedPath}
-  )
-
-  console.log(out)
-
-  // if (!name) {
-  //   // download all artifacts
-  //   core.info('No artifact name specified, downloading all artifacts')
-  //   core.info(
-  //     'Creating an extra directory for each artifact that is being downloaded'
-  //   )
-  //   const downloadResponse = await artifactClient.downloadAllArtifacts(
-  //     resolvedPath
-  //   )
-  //   core.info(`There were ${downloadResponse.length} artifacts downloaded`)
-  //   for (const artifact of downloadResponse) {
-  //     core.info(
-  //       `Artifact ${artifact.artifactName} was downloaded to ${artifact.downloadPath}`
-  //     )
-  //   }
-  // } else {
-  //   // download a single artifact
-  //   core.info(`Starting download for ${name}`)
-  //   const downloadOptions = {
-  //     createArtifactFolder: false
-  //   }
-  //   const downloadResponse = await artifactClient.downloadArtifact(
-  //     name,
-  //     resolvedPath,
-  //     downloadOptions
-  //   )
-  //   core.info(
-  //     `Artifact ${downloadResponse.artifactName} was downloaded to ${downloadResponse.downloadPath}`
-  //   )
-  // }
-  // // output the directory that the artifact(s) was/were downloaded to
-  // // if no path is provided, an empty string resolves to the current working directory
-  // core.setOutput(Outputs.DownloadPath, resolvedPath)
-  // core.info('Artifact download has finished successfully')
+  core.setOutput(Outputs.DownloadPath, resolvedPath)
+  core.info('Download artifact has finished successfully')
 }
 
 run().catch(err => core.setFailed(err.message))
